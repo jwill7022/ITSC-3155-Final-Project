@@ -10,7 +10,7 @@ class MenuItems(Base):
     description   = Column(String(255), nullable=True)
     price         = Column(Numeric, nullable=False)
     calories      = Column(Integer, nullable=False)
-    food_category = Column(String(255), nullable=False, index=True)
+    food_category = Column(String(255), nullable=False, index=True) # vegetarian, vegan, etc
 
     # ingredients are joined from menu_item_resources
     menu_item_resources = relationship(
