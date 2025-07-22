@@ -17,5 +17,5 @@ class Payment(PaymentBase):
     id: int
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    class ConfigDict:
+        from_attributes = True

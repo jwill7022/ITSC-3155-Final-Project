@@ -3,8 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..dependencies.database import Base
 
-class Order(Base):
-    class Payment(Base):
+class Payment(Base):
         __tablename__ = "payments"
 
         id = Column(Integer, primary_key=True, index=True, autoincrement=True)
