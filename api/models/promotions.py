@@ -10,4 +10,4 @@ class Promotion(Base):
     description = Column(String(255))
     discount_percent = Column(Integer, nullable=False)
     expiration_date = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=str(datetime.now()))
