@@ -4,7 +4,7 @@ from typing import Optional
 
 
 class ReviewsBase(BaseModel):
-    customer_id: int
+    customer_name: str
     rating: int
     review_text: Optional[str] = None
 
