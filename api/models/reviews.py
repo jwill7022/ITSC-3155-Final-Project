@@ -7,7 +7,7 @@ class Reviews(Base):
     __tablename__ = "reviews"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    customer_name = Column(String(100), nullable=False)
     rating = Column(Integer, nullable=False) # 1-5
     review_text = Column(String(500))
     created_at = Column(DateTime, default=str(datetime.now()))
