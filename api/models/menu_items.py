@@ -12,9 +12,9 @@ class MenuItem(Base):
     calories      = Column(Integer, nullable=False)
     food_category = Column(String(255), nullable=False, index=True) # vegetarian, vegan, etc
 
-    # ingredients are joined from menu_item_resources
-    menu_item_resources = relationship(
-        "MenuItemResource",
+    # ingredients are joined from menu_item_ingredients
+    menu_item_ingredients = relationship(
+        "MenuItemIngredient",
         back_populates="menu_item",
         cascade="all, delete-orphan"
     )
