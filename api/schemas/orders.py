@@ -7,7 +7,9 @@ from .payments import Payment
 
 
 class OrderBase(BaseModel):
+    customer_id: int
     description: Optional[str] = None
+    status: Optional[str] = "pending"
 
 
 class OrderCreate(OrderBase):
@@ -15,8 +17,9 @@ class OrderCreate(OrderBase):
 
 
 class OrderUpdate(BaseModel):
-    customer_name: Optional[str] = None
+    customer_id: Optional[int] = None
     description: Optional[str] = None
+    status: Optional[str] = None
 
 
 class Order(OrderBase):
