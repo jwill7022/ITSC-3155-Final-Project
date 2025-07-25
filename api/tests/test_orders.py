@@ -13,19 +13,22 @@ def db_session(mocker):
     return mocker.Mock()
 
 
-def test_create_order(db_session):
-    # Create a sample order
-    order_data = {
-        "customer_name": "John Doe",
-        "description": "Test order"
+def test_create_resource():
+    """Test creating a basic resource"""
+    resource_data = {
+        "item": "Bread",
+        "amount": 100
     }
 
-    order_object = model.Order(**order_data)
+    response = client.post("/resources/", json=resource_data)
 
-    # Call the create function
-    created_order = controller.create(db_session, order_object)
+    # Debug the error if it fails
+    if response.status_code != 200:
+        print(f"Status: {response.status_code}")
+        print(f"Response: {response.text}")
 
-    # Assertions
-    assert created_order is not None
-    assert created_order.customer_name == "John Doe"
-    assert created_order.description == "Test order"
+    assert response.status_code == 200
+    resource = response.json()
+    assert resource["item"] == "Bread"
+    assert resource["amount"] == 100
+    assert "id" in resource
