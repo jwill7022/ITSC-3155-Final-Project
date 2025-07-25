@@ -11,4 +11,4 @@ class Resource(Base):
     item = Column(String(100), unique=True, nullable=False)
     amount = Column(Integer, index=True, nullable=False, server_default='0.0')
 
-    recipes = relationship("Recipe", back_populates="resource")
+    menu_item_ingredients = relationship("MenuItemIngredient", back_populates="resource")

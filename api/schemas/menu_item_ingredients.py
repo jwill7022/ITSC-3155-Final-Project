@@ -4,21 +4,21 @@ from pydantic import BaseModel
 from .resources import Resource
 
 
-class MenuItemResourceBase(BaseModel):
+class MenuItemIngredientBase(BaseModel):
     menu_item_id: int
     resource_id: int
     amount: int
 
 
-class MenuItemResourceCreate(MenuItemResourceBase):
+class MenuItemIngredientCreate(MenuItemIngredientBase):
     pass
 
-class MenuItemResourceUpdate(BaseModel):
+class MenuItemIngredientUpdate(BaseModel):
     resource_id: Optional[int] = None
     amount: Optional[int] = None
     menu_item_id: Optional[int] = None
 
-class MenuItemResource(MenuItemResourceBase):
+class MenuItemIngredient(MenuItemIngredientBase):
     id: int
     resource: Resource = None
 

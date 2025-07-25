@@ -1,14 +1,14 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response, Depends
-from ..models import orders as model
+from ..models import menu_item_ingredients as model
 from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
-    new_item = model.Order(
-        customer_id=request.customer_id,
-        description=request.description,
-        status=request.status or "pending"
+    new_item = model.MenuItemIngredient(
+        menu_item_id=request.menu_item_id,
+        resource_id=request.resource_id,
+        amount=request.amount
     )
 
     try:
@@ -21,10 +21,9 @@ def create(db: Session, request):
 
     return new_item
 
-
 def read_all(db: Session):
     try:
-        result = db.query(model.Order).all()
+        result = db.query(model.MenuItemIngredient).all()
     except SQLAlchemyError as e:
         error = str(e.__dict__['orig'])
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
@@ -33,7 +32,7 @@ def read_all(db: Session):
 
 def read_one(db: Session, item_id):
     try:
-        item = db.query(model.Order).filter(model.Order.id == item_id).first()
+        item = db.query(model.MenuItemIngredient).filter(model.MenuItemIngredient.id == item_id).first()
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
     except SQLAlchemyError as e:
@@ -44,7 +43,7 @@ def read_one(db: Session, item_id):
 
 def update(db: Session, item_id, request):
     try:
-        item = db.query(model.Order).filter(model.Order.id == item_id)
+        item = db.query(model.MenuItemIngredient).filter(model.MenuItemIngredient.id == item_id)
         if not item.first():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
         update_data = request.dict(exclude_unset=True)
@@ -58,7 +57,7 @@ def update(db: Session, item_id, request):
 
 def delete(db: Session, item_id):
     try:
-        item = db.query(model.Order).filter(model.Order.id == item_id)
+        item = db.query(model.MenuItemIngredient).filter(model.MenuItemIngredient.id == item_id)
         if not item.first():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
         item.delete(synchronize_session=False)

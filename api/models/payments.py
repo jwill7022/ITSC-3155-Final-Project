@@ -13,4 +13,4 @@ class Payment(Base):
         status = Column(String(50))
         payment_type = Column(String(50))
 
-        order = relationship("Order", back_populates="payment")
+        order = relationship("Order", back_populates="payments")

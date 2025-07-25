@@ -2,19 +2,19 @@ from sqlalchemy import Column, Integer, String, Numeric
 from sqlalchemy.orm import relationship
 from ..dependencies.database import Base
 
-class MenuItems(Base):
+class MenuItem(Base):
     __tablename__ = "menu_items"
 
-    id            = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id            = Column(Integer, primary_key=True, autoincrement=True)
     name          = Column(String(255), unique=True, nullable=False, index=True)  # dish name
     description   = Column(String(255), nullable=True)
     price         = Column(Numeric, nullable=False)
     calories      = Column(Integer, nullable=False)
     food_category = Column(String(255), nullable=False, index=True) # vegetarian, vegan, etc
 
-    # ingredients are joined from menu_item_resources
-    menu_item_resources = relationship(
-        "MenuItemResource",
+    # ingredients are joined from menu_item_ingredients
+    menu_item_ingredients = relationship(
+        "MenuItemIngredient",
         back_populates="menu_item",
         cascade="all, delete-orphan"
     )
