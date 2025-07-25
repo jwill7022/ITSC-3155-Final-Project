@@ -12,6 +12,9 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     pass
 
+class CustomerUpdate(CustomerBase):
+    pass
+
 
 class Customer(CustomerBase):
     id: int
