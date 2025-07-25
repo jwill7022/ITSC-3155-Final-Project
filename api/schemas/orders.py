@@ -25,8 +25,8 @@ class OrderUpdate(BaseModel):
 class Order(OrderBase):
     id: int
     order_date: Optional[datetime] = None
-    order_details: list[OrderDetail] = None
-    payments: Optional[Payment] = None
+    order_details: Optional[list[OrderDetail]] = None
+    payment: Optional[Payment] = None
 
     class ConfigDict:
         from_attributes = True
