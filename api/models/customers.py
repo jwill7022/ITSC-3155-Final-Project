@@ -12,4 +12,4 @@ class Customer(Base):
     customer_phone = Column(Integer, index=True, nullable=False)
     customer_address = Column(String(100))
 
-    order = relationship("Customer", back_populates="order_details")
+    orders = relationship("Order", back_populates="customer")
