@@ -19,4 +19,5 @@
 
 ## Administrator notes
 - .githooks
-- .github worlflows tests
+- Automatic testing
+  - .github worlflows tests

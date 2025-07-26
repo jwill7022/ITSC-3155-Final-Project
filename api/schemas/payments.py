@@ -27,7 +27,7 @@ class PaymentCreate(PaymentBase):
 
 class Payment(PaymentBase):
     id: int
-    created_at: datetime
+    payment_date: datetime
 
     class ConfigDict:
         from_attributes = True
