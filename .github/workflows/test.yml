@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ main, master ]
   push:
-    branches: [ main, master ]
+    branches: ['**']
 
 jobs:
   test:
@@ -78,4 +78,4 @@ jobs:
         DB_NAME: test_restaurant_db
         TESTING: true
       run: |
-        python -m pytest tests/test_orders.py -v --tb=short
+        python -m pytest tests/test_customers_crud.py -v --tb=short
