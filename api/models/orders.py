@@ -10,6 +10,15 @@ class OrderType(enum.Enum):
     TAKEOUT = "takeout"
     DELIVERY = "delivery"
 
+class StatusType(enum.Enum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    IN_PROGRESS = "in_progress"
+    AWAITING_PICKUP = "awaiting_pickup"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    CANCELLED = "cancelled"
+    COMPLETED = "completed"
+
 
 class Order(Base):
     __tablename__ = "orders"
@@ -18,7 +27,7 @@ class Order(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     order_date = Column(DATETIME, nullable=False, server_default=str(datetime.now()))
     description = Column(String(300))
-    status = Column(String(50), nullable=False, default="pending")
+    status = Column(Enum(StatusType), nullable=False, default=StatusType.PENDING)
     order_type = Column(Enum(OrderType), nullable=False, default=OrderType.DINE_IN)
 
     customer = relationship("Customer", back_populates="orders")
