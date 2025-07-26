@@ -4,8 +4,9 @@ from typing import Optional
 
 
 class ReviewsBase(BaseModel):
+    menu_item_id: int
     customer_name: str
-    rating: int = Field(5, ge=1, le=5, description="Rating from 1 to 5")
+    rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     review_text: Optional[str] = None
 
 
