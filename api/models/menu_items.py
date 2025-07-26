@@ -15,7 +15,7 @@ class MenuItem(Base):
     id            = Column(Integer, primary_key=True, autoincrement=True)
     name          = Column(String(255), unique=True, nullable=False, index=True)  # dish name
     description   = Column(String(255), nullable=True)
-    price         = Column(Numeric, nullable=False)
+    price         = Column(Numeric(10, 2), nullable=False)  # price in dollars and cents
     calories      = Column(Integer, nullable=False)
     food_category = Column(Enum(FoodCategory), nullable=False, index=True, default=FoodCategory.REGULAR) # vegetarian, vegan, etc
 

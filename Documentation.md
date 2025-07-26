@@ -15,3 +15,9 @@
 **Dine-in**: PENDING → CONFIRMED → IN_PROGRESS → COMPLETED  
 **Takeout**: PENDING → CONFIRMED → IN_PROGRESS → AWAITING_PICKUP → COMPLETED  
 **Delivery**: PENDING → CONFIRMED → IN_PROGRESS → OUT_FOR_DELIVERY → COMPLETED
+
+
+## Administrator notes
+- .githooks
+- Automatic testing
+  - .github worlflows tests
