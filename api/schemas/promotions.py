@@ -1,12 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
 class PromotionBase(BaseModel):
     code: str
     description: Optional[str] = None
-    discount_percent: int
+    discount_percent: int = Field(..., ge=1, le=100, description="Percentage from 1 to 100")
     expiration_date: Optional[str] = None
 
 
