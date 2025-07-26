@@ -7,6 +7,7 @@
 * `pip install pytest-mock`
 * `pip install httpx`
 * `pip install cryptography`
+
 ### Run the server:
 `uvicorn api.main:app --reload`
 ### Test API by built-in docs:
