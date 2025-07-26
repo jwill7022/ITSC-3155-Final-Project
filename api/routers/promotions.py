@@ -25,11 +25,11 @@ def read_one(item_id: int, db: Session = Depends(get_db)):
     return controller.read_one(db, item_id=item_id)
 
 
-@router.get("/code/{promo_code}", response_model=schema.Promotion)
-def read_by_code(promo_code: str, db: Session = Depends(get_db)):
-    return controller.read_by_code(db, promo_code=promo_code)
-
-
 @router.put("/{item_id}", response_model=schema.Promotion)
 def update(item_id: int, request: schema.PromotionUpdate, db: Session = Depends(get_db)):
     return controller.update(db=db, request=request, item_id=item_id)
+
+
+@router.delete("/{item_id}")
+def delete(item_id: int, db: Session = Depends(get_db)):
+    return controller.delete(db=db, item_id=item_id)
