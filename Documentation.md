@@ -10,3 +10,8 @@
 1. **Create a Resource** (ham)
 2. **Create a Menu Item** (sandwich)
 3. **Add Menu Item Ingredients (resource) to Menu Item**
+
+## Order Status Progress
+**Dine-in**: PENDING → CONFIRMED → IN_PROGRESS → COMPLETED  
+**Takeout**: PENDING → CONFIRMED → IN_PROGRESS → AWAITING_PICKUP → COMPLETED  
+**Delivery**: PENDING → CONFIRMED → IN_PROGRESS → OUT_FOR_DELIVERY → COMPLETED
