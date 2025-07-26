@@ -4,7 +4,7 @@ from ..services import staff_services
 from ..schemas import menu_items as schema
 from ..dependencies.database import engine, get_db
 
-# holds common actions made by the customer
+# holds common actions made by the staff
 
 router = APIRouter(
     tags=['Staff Actions'],

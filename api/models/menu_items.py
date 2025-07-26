@@ -30,3 +30,8 @@ class MenuItem(Base):
         back_populates="menu_item",
         cascade="all, delete-orphan"
     )
+    reviews = relationship(
+        "Reviews",
+        back_populates="menu_item",
+        cascade="all, delete-orphan"
+    )
