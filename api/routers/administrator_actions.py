@@ -11,9 +11,8 @@ router = APIRouter(
 
 @router.delete("/purge-db")
 def purge_database(db: Session = Depends(get_db)):
-    """Administrator action to purge all data from the database"""
+    # Administrator action to purge all data from the database
     try:
-        # Get all tables and delete in reverse order (respects foreign keys)
         from ..dependencies.database import Base
         
         for table in reversed(Base.metadata.sorted_tables):
