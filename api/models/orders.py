@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DECIMAL, DATETIME, Enum
+from sqlalchemy import Column, ForeignKey, Integer, String, DECIMAL, DATETIME, Enum, func
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -25,7 +25,7 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
-    order_date = Column(DATETIME, nullable=False, server_default=str(datetime.now()))
+    order_date = Column(DATETIME, nullable=False, server_default=func.now())
     description = Column(String(300))
     status = Column(Enum(StatusType), nullable=False, default=StatusType.PENDING)
     order_type = Column(Enum(OrderType), nullable=False, default=OrderType.DINE_IN)
