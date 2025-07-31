@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, func
 from datetime import datetime
 from ..dependencies.database import Base
 
@@ -10,4 +10,4 @@ class Promotion(Base):
     description = Column(String(255))
     discount_percent = Column(Integer, nullable=False)
     expiration_date = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, server_default=func.now())
