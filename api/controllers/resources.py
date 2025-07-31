@@ -5,6 +5,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
+    # Check for duplicate resource item
+    existing_resource = db.query(model.Resource).filter(model.Resource.item == request.item).first()
+    if existing_resource:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Resource '{request.item}' already exists"
+        )
+
     new_item = model.Resource(
         item=request.item,
         amount=request.amount
