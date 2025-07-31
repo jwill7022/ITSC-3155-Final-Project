@@ -5,6 +5,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
+    # Check for duplicate menu item name
+    existing_item = db.query(model.MenuItem).filter(model.MenuItem.name == request.name).first()
+    if existing_item:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Menu item with name '{request.name}' already exists"
+        )
+
     new_item = model.MenuItem(
         name=request.name,
         description=request.description,
