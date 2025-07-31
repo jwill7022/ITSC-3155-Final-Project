@@ -29,6 +29,7 @@ class Order(Base):
     description = Column(String(300))
     status = Column(Enum(StatusType), nullable=False, default=StatusType.PENDING)
     order_type = Column(Enum(OrderType), nullable=False, default=OrderType.DINE_IN)
+    tracking_number = Column(String(50), unique=True, nullable=False)
 
     customer = relationship("Customer", back_populates="orders")
     order_details = relationship("OrderDetail", back_populates="order")
