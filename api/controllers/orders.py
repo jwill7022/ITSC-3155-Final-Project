@@ -51,6 +51,12 @@ def read_one(db: Session, item_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return item
 
+def get_orders_by_date_range(db, start_date, end_date):
+    return db.query(model.Order).filter(
+        model.Order.order_date >= start_date,
+        model.Order.order_date <= end_date
+    ).all()
+
 
 def update(db: Session, item_id, request):
     try:
