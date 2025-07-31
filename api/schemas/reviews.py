@@ -14,6 +14,11 @@ class ReviewsCreate(ReviewsBase):
     pass
 
 
+class ReviewsUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Rating from 1 to 5")
+    review_text: Optional[str] = None
+
+
 class Reviews(ReviewsBase):
     id: int
     created_at: datetime
