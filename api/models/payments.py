@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DECIMAL, DATETIME, Float, Enum
+from sqlalchemy import Column, ForeignKey, Integer, String, DECIMAL, DATETIME, Float, Enum,func
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..dependencies.database import Base
@@ -22,7 +22,7 @@ class Payment(Base):
 
         id = Column(Integer, primary_key=True, index=True, autoincrement=True)
         order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-        payment_date = Column(DATETIME, nullable=False, default=str(datetime.now()))
+        payment_date = Column(DATETIME, nullable=False, server_default=func.now())
         amount = Column(Float, nullable=False)
         status = Column(Enum(PaymentStatus), nullable=False, default=PaymentStatus.PENDING)
         payment_type = Column(Enum(PaymentType), nullable=False)
