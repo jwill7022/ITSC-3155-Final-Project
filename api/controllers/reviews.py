@@ -1,10 +1,19 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response
 from ..models import reviews as model
+from ..models.menu_items import MenuItem
 from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
+    # Validate that menu item exists
+    menu_item = db.query(MenuItem).filter(MenuItem.id == request.menu_item_id).first()
+    if not menu_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Menu item with id {request.menu_item_id} not found"
+        )
+
     new_item = model.Reviews(
         menu_item_id=request.menu_item_id,
         customer_name=request.customer_name,
