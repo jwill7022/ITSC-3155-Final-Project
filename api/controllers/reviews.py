@@ -50,6 +50,12 @@ def read_one(db: Session, item_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return item
 
+def get_dish_analytics(db):
+    # Low-rated dishes (avg rating < 3)
+    # Dishes with no orders in last 30 days
+    # Most complained about dishes
+    pass
+
 
 def update(db: Session, item_id, request):
     try:
