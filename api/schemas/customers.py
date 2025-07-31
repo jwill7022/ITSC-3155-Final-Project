@@ -13,7 +13,7 @@ class CustomerCreate(CustomerBase):
     pass
 
 class CustomerUpdate(CustomerBase):
-    customer_name = Optional[str] = None
+    customer_name: Optional[str] = None
     customer_email: Optional[str] = None
     customer_phone: Optional[int] = None
     customer_address: Optional[str] = None
