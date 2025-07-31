@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, FastAPI, status, Response
+from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy.orm import Session
 from ..services import staff_services
 from ..schemas import menu_items as schema
 from ..schemas import promotions as promotion_schema
-from ..dependencies.database import engine, get_db
+from ..dependencies.database import get_db
 
 # holds common actions made by the staff
 
