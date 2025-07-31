@@ -1,12 +1,46 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response, Depends
 from ..models import order_details as model
+from ..models.orders import Order
+from ..models.menu_items import MenuItem
 from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
-    # TODO when creating order details (adding a menu item) check to see if the item has already been added
+    #Validate that order exists
+    order = db.query(Order).filter(Order.id == request.order_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Order with id {request.order_id} not found"
+        )
 
+    #Validate that menu item exists
+    menu_item = db.query(MenuItem).filter(MenuItem.id == request.menu_item_id).first()
+    if not menu_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Menu item with id {request.menu_item_id} not found"
+        )
+
+    #Check if this menu item already exists in the order
+    existing_detail = db.query(model.OrderDetail).filter(
+        model.OrderDetail.order_id == request.order_id,
+        model.OrderDetail.menu_item_id == request.menu_item_id
+    ).first()
+
+    if existing_detail:
+        #Update existing quantity instead of creating duplicate
+        existing_detail.amount += request.amount
+        try:
+            db.commit()
+            db.refresh(existing_detail)
+            return existing_detail
+        except SQLAlchemyError as e:
+            error = str(e.__dict__['orig'])
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+
+    #Create new order detail
     new_item = model.OrderDetail(
         order_id=request.order_id,
         menu_item_id=request.menu_item_id,

@@ -51,6 +51,31 @@ def read_one(db: Session, item_id):
     return item
 
 
+def update(db: Session, item_id, request):
+    # First check if the payment exists
+    try:
+        item = db.query(model.Payment).filter(model.Payment.id == item_id)
+        if not item.first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
+
+        # Validate order exists if order_id is being updated
+        if hasattr(request, 'order_id') and request.order_id:
+            order = db.query(Order).filter(Order.id == request.order_id).first()
+            if not order:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Order with id {request.order_id} not found"
+                )
+
+        update_data = request.dict(exclude_unset=True)
+        item.update(update_data, synchronize_session=False)
+        db.commit()
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return item.first()
+
+
 def delete(db: Session, item_id):
     try:
         item = db.query(model.Payment).filter(model.Payment.id == item_id)

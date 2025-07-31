@@ -8,7 +8,8 @@ def create(db: Session, request):
     new_item = model.Order(
         customer_id=request.customer_id,
         description=request.description,
-        status=request.status or "pending"
+        status=request.status,
+        order_type=request.order_type
     )
 
     try:

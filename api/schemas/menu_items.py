@@ -20,11 +20,11 @@ class MenuItemsCreate(MenuItemsBase):
     pass
 
 class MenuItemsUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
     description: Optional[str] = None
-    price: float
-    calories: int
-    food_category: FoodCategory
+    price: Optional[float] = None
+    calories: Optional[int] = None
+    food_category: Optional[FoodCategory] = None
 
 class MenuItems(MenuItemsBase):
     id: int

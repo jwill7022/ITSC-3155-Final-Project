@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
 from enum import Enum
+from typing import Optional
 
 class PaymentType(str, Enum):
     CASH = "cash"
@@ -23,6 +24,11 @@ class PaymentBase(BaseModel):
 
 class PaymentCreate(PaymentBase):
     pass
+
+class PaymentUpdate(BaseModel):
+    amount: Optional[float] = None
+    payment_type: Optional[PaymentType] = None
+    status: Optional[PaymentStatus] = None
 
 
 class Payment(PaymentBase):
