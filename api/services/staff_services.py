@@ -17,6 +17,22 @@ def get_required_ingredients(db, menu_item_id, quantity):
         for ingredient in ingredients
     }
 
+def check_ingredient_availability(db, menu_item_id, quantity):
+    required = get_required_ingredients(db, menu_item_id, quantity)
+    shortages = []
+
+    for ingredient_name, needed_amount in required.items():
+        resource = db.query(Resource).filter(Resource.item == ingredient_name).first()
+        if resource and resource.amount < needed_amount:
+            shortages.append({
+                "ingredient": ingredient_name,
+                "needed": needed_amount,
+                "available": resource.amount,
+                "shortage": needed_amount - resource.amount
+            })
+
+    return shortages
+
 # staff actions for promotions
 def get_promotion_by_code(db: Session, promo_code: str):
     try:
