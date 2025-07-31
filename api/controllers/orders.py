@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response, Depends
 from ..models import orders as model
+from ..models.customers import Customer
 from sqlalchemy.exc import SQLAlchemyError
 
 
