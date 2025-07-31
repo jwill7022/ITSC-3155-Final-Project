@@ -5,6 +5,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
+    # Validate that customer exists
+    customer = db.query(Customer).filter(Customer.id == request.customer_id).first()
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Customer with id {request.customer_id} not found"
+        )
+
     new_item = model.Order(
         customer_id=request.customer_id,
         description=request.description,
