@@ -5,6 +5,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 def create(db: Session, request):
+    # Check for duplicate promotion code
+    existing_promo = db.query(model.Promotion).filter(model.Promotion.code == request.code).first()
+    if existing_promo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Promotion code '{request.code}' already exists"
+        )
+
     new_item = model.Promotion(
         code=request.code,
         description=request.description,
