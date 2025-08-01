@@ -9,12 +9,14 @@ from . import (
     staff_actions,
     administrator_actions,
     reviews,
-    promotions
+    promotions,
+    customer_actions
 )
 
 def load_routes(app):
     app.include_router(staff_actions.router)
     app.include_router(administrator_actions.router)
+    app.include_router(customer_actions.router)
     app.include_router(orders.router)
     app.include_router(order_details.router)
     app.include_router(resources.router)

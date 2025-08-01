@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, FastAPI, status, Response
+from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy.orm import Session
 from ..controllers import payments as controller
 from ..schemas import payments as schema
-from ..dependencies.database import engine, get_db
+from ..dependencies.database import get_db
+from ..services.payment_services import PaymentService
 
 router = APIRouter(
     tags=['Payments'],
@@ -14,6 +15,19 @@ router = APIRouter(
 def create(request: schema.PaymentCreate, db: Session = Depends(get_db)):
     return controller.create(db=db, request=request)
 
+@router.post("/process/{order_id}", response_model=schema.Payment)
+def process_payment(
+        order_id: int,
+        payment_data: dict, #{"amount": 25.50, "payment_type": "credit_card"}
+        db: Session = Depends(get_db)
+):
+    """Process payment for an order"""
+    return PaymentService.process_payment(db, order_id, payment_data)
+
+@router.get("/order/{order_id}", response_model=schema.Payment)
+def get_payment_by_order(order_id: int, db: Session = Depends(get_db)):
+    """Get payment details for an order"""
+    return PaymentService.get_payment_by_order(db, order_id)
 
 @router.get("/", response_model=list[schema.Payment])
 def read_all(db: Session = Depends(get_db)):

@@ -1,10 +1,20 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response
 from sqlalchemy.exc import SQLAlchemyError
 from api.models.menu_item_ingredients import MenuItemIngredient
+from api.models.orders import Order
+from api.models.payments import Payment, PaymentStatus
 from api.models.resources import Resource
 from api.models import promotions as promotion_model
 
+
+def calculate_daily_revenue(db, date):
+    revenue = db.query(func.sum(Payment.amount)).join(Order).filter(
+        func.date(Order.order_date) == date,
+        Payment.status == PaymentStatus.COMPLETED
+    ).scalar()
+    return revenue or 0
 
 # this function gets and returns the ingredients needed for a particular menu item
 def get_required_ingredients(db, menu_item_id, quantity):
@@ -16,6 +26,22 @@ def get_required_ingredients(db, menu_item_id, quantity):
         ingredient.resource.item: ingredient.amount * quantity
         for ingredient in ingredients
     }
+
+def check_ingredient_availability(db, menu_item_id, quantity):
+    required = get_required_ingredients(db, menu_item_id, quantity)
+    shortages = []
+
+    for ingredient_name, needed_amount in required.items():
+        resource = db.query(Resource).filter(Resource.item == ingredient_name).first()
+        if resource and resource.amount < needed_amount:
+            shortages.append({
+                "ingredient": ingredient_name,
+                "needed": needed_amount,
+                "available": resource.amount,
+                "shortage": needed_amount - resource.amount
+            })
+
+    return shortages
 
 # staff actions for promotions
 def get_promotion_by_code(db: Session, promo_code: str):
