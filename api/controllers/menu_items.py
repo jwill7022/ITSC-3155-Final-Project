@@ -24,7 +24,7 @@ class MenuItemController(BaseCRUDController):
         return super().create(db, request)
 
     @handle_db_errors
-    def update_status(self, db: Session, item_id: int, is_available: bool) -> model.MenuItem:
+    def update_availability(self, db: Session, item_id: int, is_available: bool) -> model.MenuItem:
         """Update the availability status of a menu item."""
         menu_item = self.read_one(db, item_id)
         menu_item.is_available = is_available
@@ -51,5 +51,5 @@ def update(db: Session, item_id, request):
 def delete(db: Session, item_id):
     return menu_item_controller.delete(db, item_id)
 
-def update_status(db: Session, item_id: int, is_available: bool):
-    return menu_item_controller.update_status(db, item_id, is_available)
+def update_availability(db: Session, item_id: int, is_available: bool):
+    return menu_item_controller.update_availability(db, item_id, is_available)
