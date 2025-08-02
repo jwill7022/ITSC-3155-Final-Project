@@ -3,83 +3,41 @@ from fastapi import HTTPException, status, Response
 from ..models import reviews as model
 from ..models.menu_items import MenuItem
 from sqlalchemy.exc import SQLAlchemyError
+from .base_controller import BaseCRUDController, handle_db_errors
 
+
+class ReviewController(BaseCRUDController):
+    def __init__(self):
+        super().__init__(model.Reviews)
+
+    @handle_db_errors
+    def create(self, db: Session, request):
+        # Validate that menu item exists
+        menu_item = db.query(MenuItem).filter(MenuItem.id == request.menu_item_id).first()
+        if not menu_item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Menu item with id {request.menu_item_id} not found"
+            )
+
+        return super().create(db, request)
+
+
+# Create controller instance
+review_controller = ReviewController()
 
 def create(db: Session, request):
-    # Validate that menu item exists
-    menu_item = db.query(MenuItem).filter(MenuItem.id == request.menu_item_id).first()
-    if not menu_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Menu item with id {request.menu_item_id} not found"
-        )
-
-    new_item = model.Reviews(
-        menu_item_id=request.menu_item_id,
-        customer_name=request.customer_name,
-        rating=request.rating,
-        review_text=request.review_text
-    )
-
-    try:
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-
-    return new_item
+    return review_controller.create(db, request)
 
 def read_all(db: Session):
-    try:
-        result = db.query(model.Reviews).all()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return result
-
+    return review_controller.read_all(db)
 
 def read_one(db: Session, item_id):
-    try:
-        item = db.query(model.Reviews).filter(model.Reviews.id == item_id).first()
-        if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item
-
-def get_dish_analytics(db):
-    # Low-rated dishes (avg rating < 3)
-    # Dishes with no orders in last 30 days
-    # Most complained about dishes
-    pass
-
+    return review_controller.read_one(db, item_id)
 
 def update(db: Session, item_id, request):
-    try:
-        item = db.query(model.Reviews).filter(model.Reviews.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        update_data = request.dict(exclude_unset=True)
-        item.update(update_data, synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item.first()
-
-
+    return review_controller.update(db, item_id, request)
 
 def delete(db: Session, item_id):
-    try:
-        item = db.query(model.Reviews).filter(model.Reviews.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        item.delete(synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return review_controller.delete(db, item_id)
+

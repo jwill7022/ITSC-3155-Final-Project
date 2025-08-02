@@ -73,8 +73,11 @@ def update(db: Session, item_id, request):
 def delete(db: Session, item_id):
     return order_controller.delete(db, item_id)
 
+
 def track_order(db: Session, tracking_number: str):
     return order_controller.track_order(db, tracking_number)
 
+
 def confirm_order(db: Session, order_id: int):
     return order_controller.confirm_order(db, order_id)
+

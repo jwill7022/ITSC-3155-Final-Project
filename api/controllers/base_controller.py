@@ -38,34 +38,41 @@ def handle_db_errors(func):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Database error: {error_msg}"
                 )
+        except HTTPException as e:
+            raise e
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Internal server error: {str(e)}"
+                detail=f"An unexpected error occurred: {str(e)}"
             )
 
     return wrapper
 
 
 class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+    """
+    CRUD controller with common operations.
+    """
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
     @handle_db_errors
     def create(self, db: Session, request: CreateSchemaType) -> ModelType:
-        obj_data = request.dict() if hasattr(request, 'dict') else request
-        new_item = self.model(**obj_data)
+        """Create a new item."""
+        new_item = self.model(**request.dict())
         db.add(new_item)
         db.commit()
         db.refresh(new_item)
         return new_item
 
     @handle_db_errors
-    def read_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[ModelType]:
-        return db.query(self.model).offset(skip).limit(limit).all()
+    def read_all(self, db: Session) -> List[ModelType]:
+        """Retrieve all items."""
+        return db.query(self.model).all()
 
     @handle_db_errors
     def read_one(self, db: Session, item_id: int) -> ModelType:
+        """Retrieve a single item by ID."""
         item = db.query(self.model).filter(self.model.id == item_id).first()
         if not item:
             raise HTTPException(
@@ -76,6 +83,7 @@ class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType])
 
     @handle_db_errors
     def update(self, db: Session, item_id: int, request: UpdateSchemaType) -> ModelType:
+        """Update an existing item."""
         item = db.query(self.model).filter(self.model.id == item_id)
         if not item.first():
             raise HTTPException(
@@ -90,6 +98,7 @@ class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType])
 
     @handle_db_errors
     def delete(self, db: Session, item_id: int) -> Response:
+        """Delete an item."""
         item = db.query(self.model).filter(self.model.id == item_id)
         if not item.first():
             raise HTTPException(
@@ -102,10 +111,6 @@ class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType])
 
     @handle_db_errors
     def exists(self, db: Session, item_id: int) -> bool:
-        """Check if item exists"""
+        """Check if an item exists."""
         return db.query(self.model).filter(self.model.id == item_id).first() is not None
 
-    @handle_db_errors
-    def count(self, db: Session) -> int:
-        """Get total count of items"""
-        return db.query(self.model).count()

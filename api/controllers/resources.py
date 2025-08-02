@@ -2,74 +2,70 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response, Depends
 from ..models import resources as model
 from sqlalchemy.exc import SQLAlchemyError
+from .base_controller import BaseCRUDController, handle_db_errors
+
+
+class ResourceController(BaseCRUDController):
+    def __init__(self):
+        super().__init__(model.Resource)
+
+    @handle_db_errors
+    def create(self, db: Session, request) -> model.Resource:
+        """Create a new resource, with validation for duplicate item name."""
+        existing_resource = db.query(model.Resource).filter(
+            model.Resource.item == request.item
+        ).first()
+        if existing_resource:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Resource '{request.item}' already exists"
+            )
+
+        return super().create(db, request)
+
+    @handle_db_errors
+    def update_availability(self, db: Session, item_id: int, new_amount: int) -> model.Resource:
+        """
+        Update the availability of a resource item.
+        This function is intended for cases where we only want to update the amount of an existing resource,
+        for example, when receiving new stock or deducting inventory for an order.
+        """
+        if new_amount < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New amount cannot be negative."
+            )
+
+        resource = self.read_one(db, item_id)
+        resource.amount = new_amount
+        db.commit()
+        db.refresh(resource)
+        return resource
+
+
+# Create controller instance
+resource_controller = ResourceController()
 
 
 def create(db: Session, request):
-    # Check for duplicate resource item
-    existing_resource = db.query(model.Resource).filter(model.Resource.item == request.item).first()
-    if existing_resource:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Resource '{request.item}' already exists"
-        )
+    return resource_controller.create(db, request)
 
-    new_item = model.Resource(
-        item=request.item,
-        amount=request.amount
-    )
-
-    try:
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-
-    return new_item
 
 def read_all(db: Session):
-    try:
-        result = db.query(model.Resource).all()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return result
+    return resource_controller.read_all(db)
 
 
 def read_one(db: Session, item_id):
-    try:
-        item = db.query(model.Resource).filter(model.Resource.id == item_id).first()
-        if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item
+    return resource_controller.read_one(db, item_id)
 
 
 def update(db: Session, item_id, request):
-    try:
-        item = db.query(model.Resource).filter(model.Resource.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        update_data = request.dict(exclude_unset=True)
-        item.update(update_data, synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item.first()
+    return resource_controller.update(db, item_id, request)
 
 
 def delete(db: Session, item_id):
-    try:
-        item = db.query(model.Resource).filter(model.Resource.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        item.delete(synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return resource_controller.delete(db, item_id)
+
+
+def update_availability(db: Session, item_id: int, new_amount: int):
+    return resource_controller.update_availability(db, item_id, new_amount)
