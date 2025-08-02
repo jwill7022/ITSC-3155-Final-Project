@@ -37,7 +37,7 @@ def check_inventory_availability(
         db: Session = Depends(get_db)
 ):
     """Check if order items can be fulfilled"""
-    return InventoryService.check_availability(db, order_items)
+    return InventoryService.check_availability(db=db, order_items=order_items)
 
 #Order Management
 @router.get("/orders/date-range")

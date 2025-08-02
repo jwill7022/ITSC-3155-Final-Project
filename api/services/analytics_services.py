@@ -1,3 +1,5 @@
+import decimal
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, asc
 from fastapi import HTTPException, status
@@ -35,7 +37,7 @@ class AnalyticsService:
             #Calculate popularity ranking
             results = []
             for item in performance_query:
-                popularity_score = (item.order_count or 0) * 0.7 + (item.avg_rating or 0) * 0.3
+                popularity_score = (item.order_count or 0) * decimal.Decimal(0.7) + (item.avg_rating or 0) * decimal.Decimal(0.3)
 
                 results.append({
                     "menu_item_id": item.id,
@@ -132,7 +134,7 @@ class AnalyticsService:
                 "rating_distribution": rating_counts,
                 "recent_complaints": complaints[:10],  #Last 10 complaints only
                 "satisfaction_summary": satisfaction_level,
-                "recommentations": AnalyticsService._get_improvement_recommendations(
+                "recommendations": AnalyticsService._get_improvement_recommendations(
                     avg_rating, rating_counts, complaints
                 )
             }
