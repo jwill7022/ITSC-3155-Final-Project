@@ -64,7 +64,6 @@ def update(db: Session, item_id, request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return item.first()
 
-
 def delete(db: Session, item_id):
     try:
         item = db.query(model.MenuItem).filter(model.MenuItem.id == item_id)

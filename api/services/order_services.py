@@ -1,17 +1,37 @@
+from contextlib import contextmanager
+
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, and_
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
-from ..models.orders import Order
+from ..models.orders import Order, StatusType
 from ..models.order_details import OrderDetail
 from ..models.menu_items import MenuItem
 from ..models.promotions import Promotion
 from .inventory_services import InventoryService
 import decimal
+import logging
+
+#logging setup
+logger = logging.getLogger(__name__)
 
 class OrderService:
+
+    @staticmethod
+    @contextmanager
+    def transaction_scope(db: Session):
+        """Context manager for database transactions"""
+        try:
+            yield db
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Transaction failed: {str(e)}")
+            raise
+        finally:
+            pass
 
     @staticmethod
     def create_guest_order(db: Session, guest_info: Dict, order_items: List[Dict]) -> Order:
@@ -24,82 +44,146 @@ class OrderService:
         """
 
         try:
-            #Check inventory before anything else
-            inventory_check = InventoryService.check_inventory(db, order_items)
-            if not inventory_check["all_available"]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insufficient inventory for items: {inventory_check['insufficient_items']}"
+            with OrderService.transaction_scope(db):
+                #Validate order items first
+                if not order_items:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Order must contain at least one item"
+                    )
+                #Check inventory availability
+                inventory_check = InventoryService.check_inventory(db, order_items)
+                if not inventory_check["all_available"]:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail={
+                            "message": "Insufficient inventory",
+                            "unavailable_items": inventory_check["insufficient_items"],
+                            "details": inventory_check["details"]
+                        }
+                    )
+
+                #Validate menu items exist and are available
+                menu_item_ids = [item["menu_item_id"] for item in order_items]
+                menu_items = db.query(MenuItem).filter(
+                    MenuItem.id.in_(menu_item_ids),
+                    MenuItem.is_available == True
+                ).all()
+
+                if len(menu_items) != len(menu_item_ids):
+                    unavailable_ids = set(menu_item_ids) - {item.id for item in menu_items}
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Menu items not available: {list(unavailable_ids)}"
+                    )
+
+
+                #Create order
+                new_order = Order(
+                    customer_id=None,
+                    guest_name=guest_info["guest_name"],
+                    guest_phone=guest_info["guest_phone"],
+                    guest_email=guest_info.get("guest_email"),
+                    description=guest_info.get("description"),
+                    order_type=guest_info.get("order_type", "dine_in"),
+                    promotion_code=guest_info.get("promotion_code")
                 )
 
-            #Create order
-            new_order = Order(
-                customer_id=None,
-                guest_name=guest_info["guest_name"],
-                guest_phone=guest_info["guest_phone"],
-                guest_email=guest_info.get("guest_email"),
-                description=guest_info.get("description"),
-                order_type=guest_info.get("order_type", "dine_in"),
-                promotion_code=guest_info.get("promotion_code")
-            )
+                db.add(new_order)
+                db.flush() #Retrieve ID without committing
 
-            db.add(new_order)
-            db.flush() #Retrieve ID without committing
+            #Add order details and calculate total
+            total_amount = decimal.Decimal("0")
+            menu_items_dict = {item.id: item for item in menu_items}
 
-            #Add order details
-            total_amount = 0
             for item in order_items:
-                menu_item = db.query(MenuItem).filter(MenuItem.id == item["menu_item_id"]).first()
-                if not menu_item:
+                menu_item_id = item["menu_item_id"]
+                quantity = item["quantity"]
+
+                if quantity <= 0:
                     raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Menu item  {item['menu_item_id']} not found"
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid quantity: {quantity} for menu item {menu_item_id}"
                     )
+
+                menu_item = menu_items_dict[menu_item_id]
 
                 order_detail = OrderDetail(
                     order_id=new_order.id,
-                    menu_item_id=item["menu_item_id"],
-                    amount=item["quantity"]
+                    menu_item_id=menu_item_id,
+                    amount=quantity
                 )
                 db.add(order_detail)
-                total_amount += float(menu_item.price) * item["quantity"]
 
-            #Calculate totals
-            subtotal = decimal.Decimal(str(total_amount))
+                item_total = decimal.Decimal(str(menu_item.price)) * quantity
+                total_amount += item_total
+
+            #Calculate discounts and taxes
+            subtotal = total_amount
             discount = OrderService._calculate_discount(db, new_order.promotion_code, subtotal)
             tax_rate = decimal.Decimal("0.07") #NC 7% sales tax
+            tax_amount = (subtotal - discount) * tax_rate
 
             new_order.subtotal = subtotal
             new_order.discount_amount = discount
-            new_order.tax_amount = (subtotal - discount) * tax_rate
-            new_order.total_amount = subtotal - discount + new_order.tax_amount
+            new_order.tax_amount = tax_amount
+            new_order.total_amount = subtotal - discount + tax_amount
 
-            db.commit()
+            #Set estimated completion time
+            new_order.estimated_completion = OrderService._calculate_estimated_completion(
+                new_order.order_type, len(order_items)
+            )
+
             db.refresh(new_order)
             return new_order
 
-        except SQLAlchemyError as e:
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to create guest order: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to create order: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create order"
             )
 
     @staticmethod
+    def _calculate_estimated_completion(order_type: str, item_count: int) -> datetime:
+        """Calculate estimated completion time based on order type and complexity"""
+        base_minutes = 20
+
+        if order_type == "delivery":
+            base_minutes += 30
+        elif order_type == "takeout":
+            base_minutes += 10
+
+        #Add time based on number of items
+        additional_minutes = min(item_count * 2, 20)
+
+        return datetime.now() + timedelta(minutes=base_minutes + additional_minutes)
+
+    @staticmethod
     def _calculate_discount(db: Session, promo_code: Optional[str], subtotal: decimal.Decimal) -> decimal.Decimal:
-        """Calculate discount amount from promo code"""
+        """Calculate discount amount from promo code with validation"""
         if not promo_code:
             return decimal.Decimal("0")
 
         promotion = db.query(Promotion).filter(Promotion.code == promo_code).first()
         if not promotion:
+            logger.warning(f"Invalid promo code used: {promo_code}")
             return decimal.Decimal("0")
 
-        #Check if expired
+        #Check expiry status
         if promotion.expiration_date and promotion.expiration_date < datetime.now():
+            logger.warning(f"Expired promo code used: {promo_code}")
             return decimal.Decimal("0")
 
         discount_percent = decimal.Decimal(str(promotion.discount_percent)) / 100
-        return subtotal * discount_percent
+        discount_amount = subtotal * discount_percent
+
+        #Log successful discount application
+        logger.info(f"Applied discount: {promo_code}, amount: {discount_amount}")
+        return discount_amount
 
     @staticmethod
     def track_order(db: Session, tracking_number: str) -> Dict:
@@ -112,14 +196,22 @@ class OrderService:
                     detail="Order not found"
                 )
 
-            #Calculate estimated completion time based on order status
-            estimated_completion = None
-            if order.status.value in ["pending", "confirmed", "in_progress"]:
-                #Add 30-45 minutes based on order type
-                minutes_to_add = 30 if order.order_type.value == "dine_in" else 45
-                estimated_completion = order.order_date.replace(
-                    minute=order.order_date.minute + minutes_to_add
-                )
+            #Get order items for display
+            order_items= []
+            for detail in order.order_details:
+                order_items.append({
+                    "name": detail.menu_item.name,
+                    "quantity": detail.amount,
+                    "price": float(detail.menu_item.price)
+                })
+
+            #Calculate remaining time
+            estimated_completion = order.estimated_completion
+            time_remaining = None
+            if estimated_completion and order.status.value in ["pending", "confirmed", "in_progress"]:
+                remaining_delta = estimated_completion - datetime.now()
+                if remaining_delta.total_seconds() > 0:
+                    time_remaining = int(remaining_delta.total_seconds() / 60) #minutes instead of seconds
 
             return {
                 "id": order.id,
@@ -129,14 +221,91 @@ class OrderService:
                 "order_type": order.order_type.value,
                 "total_amount": float(order.total_amount) if order.total_amount else None,
                 "estimated_completion": estimated_completion,
-                "customer_name": order.guest_name or (order.customer_name if order.customer else None)
+                "time_remaining_minutes": time_remaining,
+                "customer_name": order.guest_name or (order.customer.customer_name if order.custoemr else None),
+                "order_items": order_items,
+                "status_history": OrderService._get_status_history(order)
+
             }
 
-        except SQLAlchemyError as e:
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to track order {tracking_number}: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Database error: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to track order"
             )
+
+    @staticmethod
+    def _get_status_history(order: Order) -> List[Dict]:
+        """Get status history for order (Simple/Not reflecting actual implementation"""
+        history = [
+            {
+                "status": "pending",
+                "timestamp": order.order_date,
+                "description": "Order received"
+            }
+        ]
+
+        if order.status.value != "pending":
+            history.append({
+                "status": order.status.value,
+                "timestamp": datetime.now(),
+                "description": f"Order {order.status.value}"
+            })
+
+        return history
+
+    @staticmethod
+    def update_order_status(db: Session, order_id: int, new_status: StatusType) -> Order:
+        """Update order status with validation"""
+        try:
+            with OrderService.transaction_scope(db):
+                order = db.query(Order).filter(Order.id == order_id).first()
+                if not order:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Order not found"
+                    )
+
+                #Validate status transition
+                valid_transitions = OrderService._get_valid_status_transitions()
+                current_status = order.status.value
+
+                if new_status.value not in valid_transitions.get(current_status, []):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Cannot change status from {current_status} to {new_status.value}"
+                    )
+
+                order.status = new_status
+                db.refresh(order)
+
+                logger.info(f"Order {order_id} status updated to {new_status.value}")
+                return order
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to update order status: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update order status"
+            )
+
+    @staticmethod
+    def _get_valid_status_transitions() -> Dict[str, List[str]]:
+        """Define valid status transitions"""
+        return {
+            "pending": ["confirmed", "cancelled"],
+            "confirmed": ["in_progress", "cancelled"],
+            "in_progress": ["awaiting_pickup", "out_for_delivery", "completed"],
+            "awaiting_pickup": ["completed", "cancelled"],
+            "out_for_delivery": ["completed", "cancelled"],
+            "cancelled": [],  # Terminal state
+            "completed": []  # Terminal state
+        }
 
     @staticmethod
     def get_orders_by_date_range(db: Session, start_date: date, end_date: date) -> List[Dict]:
