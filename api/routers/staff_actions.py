@@ -71,10 +71,10 @@ def get_orders_by_date_range(
 # Revenue Reporting - FIXED
 @router.get("/revenue/daily")
 def get_daily_revenue(
-        target_date: date = Query(..., description="Date for revenue calculation (YYYY-MM-DD)", example="2024-01-15"),
+        target_date: date = Query(..., description="Date for revenue calculation"),
         db: Session = Depends(get_db)
 ):
-    """Calculate total revenue for a specific date - FIXED"""
+    """Calculate total revenue for a specific date"""
     return OrderService.calculate_daily_revenue(db, target_date)
 
 

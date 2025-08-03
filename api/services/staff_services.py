@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,12 +9,34 @@ from api.models.resources import Resource
 from api.models import promotions as promotion_model
 
 
-def calculate_daily_revenue(db, date):
-    revenue = db.query(func.sum(Order.total_amount)).filter(
-        func.date(Order.order_date) == date,
-        Order.status == StatusType.COMPLETED  # Only count completed orders
-    ).scalar()
-    return float(revenue) if revenue else 0.0
+def calculate_daily_revenue(db: Session, date):
+    """
+    Calculate daily revenue from completed orders only
+    This must match exactly what OrderService.calculate_daily_revenue returns
+    """
+    try:
+        result = db.query(
+            func.sum(Order.total_amount).label("total_revenue"),
+            func.count(Order.id).label("order_count")
+        ).filter(
+            and_(
+                func.date(Order.order_date) == date,
+                Order.status == StatusType.COMPLETED  #Only completed orders
+            )
+        ).first()
+
+        return {
+            "date": date.isoformat(),
+            "total_revenue": float(result.total_revenue) if result.total_revenue else 0.0,
+            "order_count": result.order_count or 0
+        }
+
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Database error: {str(e)}"
+        )
+
 
 # this function gets and returns the ingredients needed for a particular menu item
 def get_required_ingredients(db, menu_item_id, quantity):

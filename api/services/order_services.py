@@ -337,27 +337,29 @@ class OrderService:
 
     @staticmethod
     def calculate_daily_revenue(db: Session, target_date: date) -> Dict:
-        """Calculate total revenue for a specific date - FIXED VERSION"""
+        """Calculate total revenue for a specific date - ONLY COMPLETED ORDERS"""
         try:
-            # Convert date to datetime range for full day coverage
-            start_datetime = datetime.combine(target_date, time.min)
-            end_datetime = datetime.combine(target_date, time.max)
+            start_of_day = datetime.combine(target_date, datetime.min.time())
+            end_of_day = start_of_day + timedelta(days=1)
 
             result = db.query(
                 func.sum(Order.total_amount).label("total_revenue"),
                 func.count(Order.id).label("order_count")
             ).filter(
                 and_(
-                    Order.order_date >= start_datetime,
-                    Order.order_date <= end_datetime,
-                    Order.status != "cancelled"
+                    Order.order_date >= start_of_day,
+                    Order.order_date < end_of_day,
+                    Order.status == StatusType.COMPLETED  #only completed orders
                 )
             ).first()
 
+            total_revenue = float(result.total_revenue) if result.total_revenue else 0.0
+            order_count = result.order_count if result.order_count else 0
+
             return {
                 "date": target_date.isoformat(),
-                "total_revenue": float(result.total_revenue) if result.total_revenue else 0,
-                "order_count": result.order_count or 0
+                "total_revenue": total_revenue,
+                "order_count": order_count
             }
 
         except SQLAlchemyError as e:
