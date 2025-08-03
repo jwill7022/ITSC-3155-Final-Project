@@ -33,6 +33,11 @@ def handle_db_errors(func):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cannot complete operation due to related data"
                 )
+            elif "cannot delete or update a parent row" in error_msg.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot delete item because it is referenced by other records"
+                )
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -124,4 +129,3 @@ class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType])
     def exists(self, db: Session, item_id: int) -> bool:
         """Check if an item exists."""
         return db.query(self.model).filter(self.model.id == item_id).first() is not None
-

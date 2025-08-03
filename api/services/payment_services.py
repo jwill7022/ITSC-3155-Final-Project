@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from typing import Dict
 from ..models.payments import Payment, PaymentType, PaymentStatus
 from ..models.orders import Order, StatusType
-import decimal
+from decimal import Decimal
 
 class PaymentService:
 
@@ -28,8 +28,8 @@ class PaymentService:
                     detail="Payment already exists for this order"
                 )
 
-            #Validate payment amount matches order total
-            if order.total_amount and abs(float(order.total_amount) - payment_data["amount"]) > 0.01:
+            #Validate payment amount matches order total with proper type conversion
+            if order.total_amount and abs(float(order.total_amount) - float(payment_data["amount"])) > 0.01:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Payment amount {payment_data['amount']} does not match order total {order.total_amount}"
@@ -61,6 +61,8 @@ class PaymentService:
 
             return payment
 
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             db.rollback()
             raise HTTPException(
@@ -77,7 +79,7 @@ class PaymentService:
         :return:
         """
         #Simple simulation - reject if amount is exactly $31.55 (for testing purposes)
-        if payment_data["amount"] == 31.55:
+        if float(payment_data["amount"]) == 31.55:
             return False
 
         #Accept all other payments

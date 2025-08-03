@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,27 +9,13 @@ from ..models.order_details import OrderDetail
 from ..models.menu_items import MenuItem
 from ..models.promotions import Promotion
 from .inventory_services import InventoryService
-import decimal
+from decimal import Decimal
 import logging
 
 #logging setup
 logger = logging.getLogger(__name__)
 
 class OrderService:
-
-    @staticmethod
-    @contextmanager
-    def transaction_scope(db: Session):
-        """Context manager for database transactions"""
-        try:
-            yield db
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Transaction failed: {str(e)}")
-            raise
-        finally:
-            pass
 
     @staticmethod
     def create_guest_order(db: Session, guest_info: Dict, order_items: List[Dict]) -> Order:
@@ -44,56 +28,54 @@ class OrderService:
         """
 
         try:
-            with OrderService.transaction_scope(db):
-                #Validate order items first
-                if not order_items:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Order must contain at least one item"
-                    )
-                #Check inventory availability
-                inventory_check = InventoryService.check_availability(db, order_items)
-                if not inventory_check["all_available"]:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail={
-                            "message": "Insufficient inventory",
-                            "unavailable_items": inventory_check["insufficient_items"],
-                            "details": inventory_check["details"]
-                        }
-                    )
-
-                #Validate menu items exist and are available
-                menu_item_ids = [item["menu_item_id"] for item in order_items]
-                menu_items = db.query(MenuItem).filter(
-                    MenuItem.id.in_(menu_item_ids),
-                    MenuItem.is_available == True
-                ).all()
-
-                if len(menu_items) != len(menu_item_ids):
-                    unavailable_ids = set(menu_item_ids) - {item.id for item in menu_items}
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Menu items not available: {list(unavailable_ids)}"
-                    )
-
-
-                #Create order
-                new_order = Order(
-                    customer_id=None,
-                    guest_name=guest_info["guest_name"],
-                    guest_phone=guest_info["guest_phone"],
-                    guest_email=guest_info.get("guest_email"),
-                    description=guest_info.get("description"),
-                    order_type=guest_info.get("order_type", "dine_in"),
-                    promotion_code=guest_info.get("promotion_code")
+            #Validate order items first
+            if not order_items:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Order must contain at least one item"
+                )
+            #Check inventory availability
+            inventory_check = InventoryService.check_availability(db, order_items)
+            if not inventory_check["all_available"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Insufficient inventory",
+                        "unavailable_items": inventory_check["insufficient_items"],
+                        "details": inventory_check["details"]
+                    }
                 )
 
-                db.add(new_order)
-                db.flush() #Retrieve ID without committing
+            #Validate menu items exist and are available
+            menu_item_ids = [item["menu_item_id"] for item in order_items]
+            menu_items = db.query(MenuItem).filter(
+                MenuItem.id.in_(menu_item_ids),
+                MenuItem.is_available == True
+            ).all()
+
+            if len(menu_items) != len(menu_item_ids):
+                unavailable_ids = set(menu_item_ids) - {item.id for item in menu_items}
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Menu items not available: {list(unavailable_ids)}"
+                )
+
+            #Create order
+            new_order = Order(
+                customer_id=None,
+                guest_name=guest_info["guest_name"],
+                guest_phone=guest_info["guest_phone"],
+                guest_email=guest_info.get("guest_email"),
+                description=guest_info.get("description"),
+                order_type=guest_info.get("order_type", "dine_in"),
+                promotion_code=guest_info.get("promotion_code")
+            )
+
+            db.add(new_order)
+            db.flush() #Retrieve ID without committing
 
             #Add order details and calculate total
-            total_amount = decimal.Decimal("0")
+            total_amount = Decimal("0")
             menu_items_dict = {item.id: item for item in menu_items}
 
             for item in order_items:
@@ -115,13 +97,13 @@ class OrderService:
                 )
                 db.add(order_detail)
 
-                item_total = decimal.Decimal(str(menu_item.price)) * quantity
+                item_total = Decimal(str(menu_item.price)) * quantity
                 total_amount += item_total
 
             #Calculate discounts and taxes
             subtotal = total_amount
             discount = OrderService._calculate_discount(db, new_order.promotion_code, subtotal)
-            tax_rate = decimal.Decimal("0.07") #NC 7% sales tax
+            tax_rate = Decimal("0.07") #NC 7% sales tax
             tax_amount = (subtotal - discount) * tax_rate
 
             new_order.subtotal = subtotal
@@ -134,13 +116,15 @@ class OrderService:
                 new_order.order_type, len(order_items)
             )
 
+            db.commit()
             db.refresh(new_order)
             return new_order
 
-
         except HTTPException:
+            db.rollback()
             raise
         except Exception as e:
+            db.rollback()
             logger.error(f"Failed to create guest order: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -163,22 +147,22 @@ class OrderService:
         return datetime.now() + timedelta(minutes=base_minutes + additional_minutes)
 
     @staticmethod
-    def _calculate_discount(db: Session, promo_code: Optional[str], subtotal: decimal.Decimal) -> decimal.Decimal:
+    def _calculate_discount(db: Session, promo_code: Optional[str], subtotal: Decimal) -> Decimal:
         """Calculate discount amount from promo code with validation"""
         if not promo_code:
-            return decimal.Decimal("0")
+            return Decimal("0")
 
         promotion = db.query(Promotion).filter(Promotion.code == promo_code).first()
         if not promotion:
             logger.warning(f"Invalid promo code used: {promo_code}")
-            return decimal.Decimal("0")
+            return Decimal("0")
 
         #Check expiry status
         if promotion.expiration_date and promotion.expiration_date < datetime.now():
             logger.warning(f"Expired promo code used: {promo_code}")
-            return decimal.Decimal("0")
+            return Decimal("0")
 
-        discount_percent = decimal.Decimal(str(promotion.discount_percent)) / 100
+        discount_percent = Decimal(str(promotion.discount_percent)) / 100
         discount_amount = subtotal * discount_percent
 
         #Log successful discount application
@@ -222,7 +206,7 @@ class OrderService:
                 "total_amount": float(order.total_amount) if order.total_amount else None,
                 "estimated_completion": estimated_completion,
                 "time_remaining_minutes": time_remaining,
-                "customer_name": order.guest_name or (order.customer.customer_name if order.customer else None),
+                "customer_name": order.guest_name or (order.customer.customer_name if order.customer else "Unknown"),
                 "order_items": order_items,
                 "status_history": OrderService._get_status_history(order)
 
@@ -261,33 +245,34 @@ class OrderService:
     def update_order_status(db: Session, order_id: int, new_status: StatusType) -> Order:
         """Update order status with validation"""
         try:
-            with OrderService.transaction_scope(db):
-                order = db.query(Order).filter(Order.id == order_id).first()
-                if not order:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Order not found"
-                    )
+            order = db.query(Order).filter(Order.id == order_id).first()
+            if not order:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Order not found"
+                )
 
-                #Validate status transition
-                valid_transitions = OrderService._get_valid_status_transitions()
-                current_status = order.status.value
+            #Validate status transition
+            valid_transitions = OrderService._get_valid_status_transitions()
+            current_status = order.status.value
 
-                if new_status.value not in valid_transitions.get(current_status, []):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Cannot change status from {current_status} to {new_status.value}"
-                    )
+            if new_status.value not in valid_transitions.get(current_status, []):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot change status from {current_status} to {new_status.value}"
+                )
 
-                order.status = new_status
-                db.refresh(order)
+            order.status = new_status
+            db.commit()
+            db.refresh(order)
 
-                logger.info(f"Order {order_id} status updated to {new_status.value}")
-                return order
+            logger.info(f"Order {order_id} status updated to {new_status.value}")
+            return order
 
         except HTTPException:
             raise
         except Exception as e:
+            db.rollback()
             logger.error(f"Failed to update order status: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -6,6 +6,7 @@ import time
 import redis
 from redis.exceptions import  RedisError, ConnectionError
 import json
+import asyncio
 from fastapi import HTTPException, status
 
 
@@ -126,6 +127,6 @@ def cached(ttl: int = 300, key_prefix: Optional[str] = None):
             cache.set(cache_key, result, ttl)
             return result
 
-        return async_wrapper if hasattr(func, '__code__') and func.__code__.co_flags & 0x80 else sync_wrapper
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
     return decorator
