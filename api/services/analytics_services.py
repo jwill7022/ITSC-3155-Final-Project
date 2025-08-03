@@ -1,5 +1,4 @@
-import decimal
-
+from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, asc
 from fastapi import HTTPException, status
@@ -37,7 +36,7 @@ class AnalyticsService:
             #Calculate popularity ranking
             results = []
             for item in performance_query:
-                popularity_score = (item.order_count or 0) * decimal.Decimal(0.7) + (item.avg_rating or 0) * decimal.Decimal(0.3)
+                popularity_score = (item.order_count or 0) * Decimal('0.7') + (item.avg_rating or 0) * Decimal('0.3')
 
                 results.append({
                     "menu_item_id": item.id,
@@ -175,7 +174,7 @@ class AnalyticsService:
         #Analyze complaint patterns
         complaint_text = ' '.join([c['review_text'].lower() for c in complaints if c['review_text']])
 
-        if 'cold' in complaint_text or 'temperatuere' in complaint_text:
+        if 'cold' in complaint_text or 'temperature' in complaint_text:
             recommendations.append("Review food temperature control and serving times")
 
         if 'slow' in complaint_text or 'wait' in complaint_text:
