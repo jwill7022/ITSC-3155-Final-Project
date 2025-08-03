@@ -1,4 +1,4 @@
-### Installing necessary packages:  
+## Installing necessary packages:  
 * `pip install fastapi`
 * `pip install "uvicorn[standard]"`  
 * `pip install sqlalchemy`  
@@ -7,11 +7,14 @@
 * `pip install pytest-mock`
 * `pip install httpx`
 * `pip install cryptography`
+* `pip install pydantic`
+* `pip install requests`
+* `pip install redis`
 
 ### BEFORE RUNNING SERVER:
 * Ensure that database name matches name found in *api/dependencies/config.py*
-## If database already exists:
-* Run file **migration_script.py** to ensure that all proper columns are added to the database.
+# If database already exists:
+* Drop the schema and reinitialize it
 
 ### Run the server:
 `uvicorn api.main:app --reload`
