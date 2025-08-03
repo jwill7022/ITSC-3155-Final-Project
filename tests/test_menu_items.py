@@ -1,3 +1,5 @@
+from fastapi import status
+
 def test_create_menu_item_success(client):
     """Test successful menu item creation"""
     menu_item_data = {
@@ -5,7 +7,7 @@ def test_create_menu_item_success(client):
         "description": "Fresh romaine with caesar dressing",
         "price": 12.99,
         "calories": 280,
-        "food_category": "vegetarian",
+        "food_category": "VEGETARIAN",
         "is_available": True
     }
 
@@ -15,7 +17,7 @@ def test_create_menu_item_success(client):
     data = response.json()
     assert data["name"] == "Caesar Salad"
     assert data["price"] == 12.99
-    assert data["food_category"] == "vegetarian"
+    assert data["food_category"] == "VEGETARIAN"
 
 
 def test_create_duplicate_menu_item(client, sample_menu_item):
@@ -25,7 +27,7 @@ def test_create_duplicate_menu_item(client, sample_menu_item):
         "description": "Another chicken dish",
         "price": 14.99,
         "calories": 300,
-        "food_category": "regular"
+        "food_category": "REGULAR"
     }
 
     response = client.post("/menu_items/", json=menu_item_data)

@@ -24,7 +24,7 @@ def test_create_customer():
     customer_data = {
         "customer_name": "John Doe",
         "customer_email": "john.doe@example.com",
-        "customer_phone": 5550123
+        "customer_phone": "5985550123"
     }
 
     # Check if customer already exists in the database

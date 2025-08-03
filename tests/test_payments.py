@@ -23,7 +23,7 @@ def test_payment_amount_validation(client, db_session, sample_menu_item):
     # Test correct payment amount
     payment_data = {
         "amount": 25.99,
-        "payment_type": "credit_card"
+        "payment_type": "CREDIT_CARD"
     }
 
     response = client.post(f"/payments/process/{order.id}", json=payment_data)
@@ -45,7 +45,7 @@ def test_failed_payment_simulation(client, db_session):
 
     payment_data = {
         "amount": 31.55,
-        "payment_type": "credit_card"
+        "payment_type": "CREDIT_CARD"
     }
 
     response = client.post(f"/payments/process/{order.id}", json=payment_data)

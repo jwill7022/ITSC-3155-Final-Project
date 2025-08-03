@@ -3,18 +3,18 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response
 from sqlalchemy.exc import SQLAlchemyError
 from api.models.menu_item_ingredients import MenuItemIngredient
-from api.models.orders import Order
+from api.models.orders import Order, StatusType
 from api.models.payments import Payment, PaymentStatus
 from api.models.resources import Resource
 from api.models import promotions as promotion_model
 
 
 def calculate_daily_revenue(db, date):
-    revenue = db.query(func.sum(Payment.amount)).join(Order).filter(
+    revenue = db.query(func.sum(Order.total_amount)).filter(
         func.date(Order.order_date) == date,
-        Payment.status == PaymentStatus.COMPLETED
+        Order.status == StatusType.COMPLETED
     ).scalar()
-    return revenue or 0
+    return float(revenue) or 0
 
 # this function gets and returns the ingredients needed for a particular menu item
 def get_required_ingredients(db, menu_item_id, quantity):
