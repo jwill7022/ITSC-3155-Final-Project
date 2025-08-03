@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Enum
+from sqlalchemy import Column, Integer, String, Numeric, Enum, Boolean
 from sqlalchemy.orm import relationship
 from ..dependencies.database import Base
 import enum
@@ -8,6 +8,8 @@ class FoodCategory(enum.Enum):
     VEGAN = "vegan"
     GLUTEN_FREE = "gluten_free"
     REGULAR = "regular"
+    KETO = "keto"
+    LOW_CARB = "low_carb"
 
 class MenuItem(Base):
     __tablename__ = "menu_items"
@@ -18,6 +20,7 @@ class MenuItem(Base):
     price         = Column(Numeric(10, 2), nullable=False)
     calories      = Column(Integer, nullable=False)
     food_category = Column(Enum(FoodCategory), nullable=False, index=True, default=FoodCategory.REGULAR)
+    is_available = Column(Boolean, nullable=False, default=True, index=True)
 
     menu_item_ingredients = relationship(
         "MenuItemIngredient",

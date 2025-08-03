@@ -121,12 +121,12 @@ def get_menu_item(
     return controller.read_one(db, item_id=item_id)
 
 @router.get(
-    "/{item_id/nutrition",
+    "/{item_id}/nutrition",
     summary="Get nutrition information",
     description="Get detailed nutrition information for a menu item"
 )
 def get_nutrition_info(
-        item_id: int = Query(..., gt=0),
+        item_id: int = Path(..., gt=0),
         db: Session = Depends(get_db)
 ):
     """Get nutrition and ingredient information for a menu item"""

@@ -12,7 +12,7 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
 def handle_db_errors(func):
-    """Improved error handler with better error messages"""
+    """Error handler with error messages"""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -59,7 +59,12 @@ class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType])
     @handle_db_errors
     def create(self, db: Session, request: CreateSchemaType) -> ModelType:
         """Create a new item."""
-        new_item = self.model(**request.dict())
+        if hasattr(request, 'model_dump'):
+            obj_data = request.model_dump()
+        elif hasattr(request, 'dict'):
+            obj_data = request.dict()
+
+        new_item = self.model(**obj_data)
         db.add(new_item)
         db.commit()
         db.refresh(new_item)
@@ -91,7 +96,13 @@ class BaseCRUDController(Generic[ModelType, CreateSchemaType, UpdateSchemaType])
                 detail=f"{self.model.__name__} with id {item_id} not found"
             )
 
-        update_data = request.dict(exclude_unset=True) if hasattr(request, 'dict') else request
+        if hasattr(request, 'model_dump'):
+            update_data = request.model_dump(exclude_unset=True)
+        elif hasattr(request, 'dict'):
+            update_data = request.dict(exclude_unset=True)
+        else:
+            update_data = request
+
         item.update(update_data, synchronize_session=False)
         db.commit()
         return item.first()

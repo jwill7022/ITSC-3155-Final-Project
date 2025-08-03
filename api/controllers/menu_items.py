@@ -1,55 +1,136 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status, Response, Depends
+from fastapi import HTTPException, status, Response
 from ..models import menu_items as model
 from sqlalchemy.exc import SQLAlchemyError
-from .base_controller import BaseCRUDController, handle_db_errors
+from sqlalchemy import func
+from ..models.reviews import Reviews
+from ..models.menu_item_ingredients import MenuItemIngredient
+from ..models.resources import Resource
 
-
-class MenuItemController(BaseCRUDController):
-    def __init__(self):
-        super().__init__(model.MenuItem)
-
-    @handle_db_errors
-    def create(self, db: Session, request) -> model.MenuItem:
-        """Create a new menu item, with validation for duplicate name."""
-        existing_item = db.query(model.MenuItem).filter(
-            model.MenuItem.name == request.name
-        ).first()
-        if existing_item:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Menu item with name '{request.name}' already exists"
-            )
-
-        return super().create(db, request)
-
-    @handle_db_errors
-    def update_availability(self, db: Session, item_id: int, is_available: bool) -> model.MenuItem:
-        """Update the availability status of a menu item."""
-        menu_item = self.read_one(db, item_id)
-        menu_item.is_available = is_available
-        db.commit()
-        db.refresh(menu_item)
-        return menu_item
-
-
-# Create controller instance
-menu_item_controller = MenuItemController()
 
 def create(db: Session, request):
-    return menu_item_controller.create(db, request)
+    # Check for duplicate menu item name
+    existing_item = db.query(model.MenuItem).filter(model.MenuItem.name == request.name).first()
+    if existing_item:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Menu item with name '{request.name}' already exists"
+        )
 
-def read_all(db: Session):
-    return menu_item_controller.read_all(db)
+    new_item = model.MenuItem(
+        name=request.name,
+        description=request.description,
+        price=request.price,
+        calories=request.calories,
+        food_category=request.food_category,
+        is_available=getattr(request, 'is_available', True)
+    )
+
+    try:
+        db.add(new_item)
+        db.commit()
+        db.refresh(new_item)
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+
+    return new_item
+
+
+def read_all(db: Session, skip: int = 0, limit: int = 100, available_only: bool = True):
+    try:
+        query = db.query(model.MenuItem)
+        if available_only:
+            query = query.filter(model.MenuItem.is_available == True)
+        result = query.offset(skip).limit(limit).all()
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return result
+
 
 def read_one(db: Session, item_id):
-    return menu_item_controller.read_one(db, item_id)
+    try:
+        item = db.query(model.MenuItem).filter(model.MenuItem.id == item_id).first()
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return item
+
+
+def get_nutrition_info(db: Session, item_id: int):
+    """Get nutrition and ingredient information for a menu item"""
+    try:
+        item = db.query(model.MenuItem).filter(model.MenuItem.id == item_id).first()
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found!")
+
+        # Get ingredients
+        ingredients = db.query(MenuItemIngredient).join(Resource).filter(
+            MenuItemIngredient.menu_item_id == item_id
+        ).all()
+
+        ingredient_list = [
+            {
+                "name": ing.resource.item,
+                "amount": ing.amount
+            }
+            for ing in ingredients
+        ]
+
+        return {
+            "menu_item": {
+                "id": item.id,
+                "name": item.name,
+                "calories": item.calories,
+                "food_category": item.food_category.value
+            },
+            "ingredients": ingredient_list
+        }
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+
+
+def update_availability(db: Session, item_id: int, available: bool):
+    """Toggle menu item availability"""
+    try:
+        item = db.query(model.MenuItem).filter(model.MenuItem.id == item_id)
+        if not item.first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
+
+        item.update({"is_available": available}, synchronize_session=False)
+        db.commit()
+        return item.first()
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+
 
 def update(db: Session, item_id, request):
-    return menu_item_controller.update(db, item_id, request)
+    try:
+        item = db.query(model.MenuItem).filter(model.MenuItem.id == item_id)
+        if not item.first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
+        update_data = request.dict(exclude_unset=True)
+        item.update(update_data, synchronize_session=False)
+        db.commit()
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return item.first()
+
 
 def delete(db: Session, item_id):
-    return menu_item_controller.delete(db, item_id)
-
-def update_availability(db: Session, item_id: int, is_available: bool):
-    return menu_item_controller.update_availability(db, item_id, is_available)
+    try:
+        item = db.query(model.MenuItem).filter(model.MenuItem.id == item_id)
+        if not item.first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
+        item.delete(synchronize_session=False)
+        db.commit()
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

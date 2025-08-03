@@ -43,6 +43,8 @@ class Order(Base):
     guest_phone = Column(String(20), nullable=True)
     guest_email = Column(String(100), nullable=True)
 
+    estimated_completion = Column(DATETIME, nullable=True)
+
     customer = relationship("Customer", back_populates="orders")
     order_details = relationship("OrderDetail", back_populates="order", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False, cascade="all, delete-orphan")

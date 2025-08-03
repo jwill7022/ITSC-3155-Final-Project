@@ -52,7 +52,7 @@ class OrderService:
                         detail=f"Order must contain at least one item"
                     )
                 #Check inventory availability
-                inventory_check = InventoryService.check_inventory(db, order_items)
+                inventory_check = InventoryService.check_availability(db, order_items)
                 if not inventory_check["all_available"]:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -222,7 +222,7 @@ class OrderService:
                 "total_amount": float(order.total_amount) if order.total_amount else None,
                 "estimated_completion": estimated_completion,
                 "time_remaining_minutes": time_remaining,
-                "customer_name": order.guest_name or (order.customer.customer_name if order.custoemr else None),
+                "customer_name": order.guest_name or (order.customer.customer_name if order.customer else None),
                 "order_items": order_items,
                 "status_history": OrderService._get_status_history(order)
 
