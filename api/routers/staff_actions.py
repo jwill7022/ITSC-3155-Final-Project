@@ -46,8 +46,8 @@ def check_inventory_availability(
 # Order Management - FIXED
 @router.get("/orders/date-range")
 def get_orders_by_date_range(
-        start_date: date = Query(..., description="Start date (YYYY-MM-DD)", example="2024-01-01"),
-        end_date: date = Query(..., description="End date (YYYY-MM-DD)", example="2024-01-31"),
+        start_date: date = Query(..., description="Start date (YYYY-MM-DD)", examples=["2024-01-01"]),
+        end_date: date = Query(..., description="End date (YYYY-MM-DD)", examples=["2024-01-31"]),
         db: Session = Depends(get_db)
 ):
     """Get orders within date range - FIXED with proper validation"""

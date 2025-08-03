@@ -70,7 +70,7 @@ def search_menu_items(
         min_price: Optional[float] = Query(None, description="Minimum price"),
         max_price: Optional[float] = Query(None, description="Maximum price"),
         max_calories: Optional[int] = Query(None, ge=0, description="Maximum calories filter"),
-        sort_by: str = Query("name", regex="^(name|price_asc|price_desc|calories|rating)$"),
+        sort_by: str = Query("name", pattern="^(name|price_asc|price_desc|calories|rating)$"),
         available_only: bool = Query(True, description="Show only available items"),
         db: Session = Depends(get_db)
 ):
