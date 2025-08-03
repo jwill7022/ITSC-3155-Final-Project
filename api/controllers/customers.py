@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status, Response, Depends
+from fastapi import HTTPException, status, Response
 from ..models import customers as model
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import or_
 
 
 def create(db: Session, request):
@@ -22,14 +23,27 @@ def create(db: Session, request):
 
     return new_item
 
-def read_all(db: Session):
+def read_all(db: Session, skip: int = 0, limit: int = 100):
     try:
-        result = db.query(model.Customer).all()
+        result = db.query(model.Customer).offset(skip).limit(limit).all()
     except SQLAlchemyError as e:
         error = str(e.__dict__['orig'])
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return result
 
+def search_customers(db: Session, search_term: str, skip: int = 0, limit: int = 100):
+    """Search customers by name or email"""
+    try:
+        result = db.query(model.Customer).filter(
+            or_(
+                model.Customer.customer_name.ilike(f"%{search_term}%"),
+                model.Customer.customer_email.ilike(f"%{search_term}%")
+            )
+        ).offset(skip).limit(limit).all()
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return result
 
 def read_one(db: Session, item_id):
     try:
@@ -40,7 +54,6 @@ def read_one(db: Session, item_id):
         error = str(e.__dict__['orig'])
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return item
-
 
 def update(db: Session, item_id, request):
     try:
@@ -54,7 +67,6 @@ def update(db: Session, item_id, request):
         error = str(e.__dict__['orig'])
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return item.first()
-
 
 def delete(db: Session, item_id):
     try:

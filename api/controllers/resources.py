@@ -1,75 +1,99 @@
+from typing import List, Dict
+
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status, Response, Depends
+from fastapi import HTTPException, status
 from ..models import resources as model
+from ..schemas import resources as schema
+from .base_controller import BaseCRUDController
 from sqlalchemy.exc import SQLAlchemyError
 
 
-def create(db: Session, request):
-    # Check for duplicate resource item
-    existing_resource = db.query(model.Resource).filter(model.Resource.item == request.item).first()
-    if existing_resource:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Resource '{request.item}' already exists"
-        )
+class ResourceController(BaseCRUDController[model.Resource, schema.ResourceCreate, schema.ResourceUpdate]):
+    def __init__(self):
+        super().__init__(model.Resource)
 
-    new_item = model.Resource(
-        item=request.item,
-        amount=request.amount
-    )
+    def create(self, db: Session, request: schema.ResourceCreate) -> model.Resource:
+        """Override create to check for duplicate resource names"""
+        try:
+            # Check for duplicate resource item
+            existing_resource = db.query(self.model).filter(self.model.item == request.item).first()
+            if existing_resource:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Resource '{request.item}' already exists"
+                )
 
-    try:
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+            return super().create(db, request)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to create resource: {str(e)}"
+            )
 
-    return new_item
+    def get_low_stock_items(self, db: Session, threshold: int = 10):
+        """Get resources below stock threshold"""
+        try:
+            return db.query(self.model).filter(self.model.amount <= threshold).all()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to get low stock items: {str(e)}"
+            )
+
+    def bulk_update_stock(self, db: Session, updates: List[Dict[str, int]]):
+        """Bulk update stock levels"""
+        try:
+            updated_items = []
+            for update in updates:
+                resource_id = update.get('resource_id')
+                new_amount = update.get('amount')
+
+                if resource_id and new_amount is not None:
+                    resource = db.query(self.model).filter(self.model.id == resource_id).first()
+                    if resource:
+                        resource.amount = new_amount
+                        updated_items.append(resource)
+
+            db.commit()
+            return updated_items
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Bulk update failed: {str(e)}"
+            )
+
+
+# Create controller instance
+resource_controller = ResourceController()
+
+
+# Function-based interface
+def create(db: Session, request: schema.ResourceCreate):
+    return resource_controller.create(db, request)
+
 
 def read_all(db: Session):
-    try:
-        result = db.query(model.Resource).all()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return result
+    return resource_controller.read_all(db)
 
 
-def read_one(db: Session, item_id):
-    try:
-        item = db.query(model.Resource).filter(model.Resource.id == item_id).first()
-        if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item
+def read_one(db: Session, item_id: int):
+    return resource_controller.read_one(db, item_id)
 
 
-def update(db: Session, item_id, request):
-    try:
-        item = db.query(model.Resource).filter(model.Resource.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        update_data = request.dict(exclude_unset=True)
-        item.update(update_data, synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item.first()
+def update(db: Session, item_id: int, request: schema.ResourceUpdate):
+    return resource_controller.update(db, item_id, request)
 
 
-def delete(db: Session, item_id):
-    try:
-        item = db.query(model.Resource).filter(model.Resource.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        item.delete(synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+def delete(db: Session, item_id: int):
+    return resource_controller.delete(db, item_id)
+
+
+def get_low_stock_items(db: Session, threshold: int = 10):
+    return resource_controller.get_low_stock_items(db, threshold)
+
+
+def bulk_update_stock(db: Session, updates: List[Dict[str, int]]):
+    return resource_controller.bulk_update_stock(db, updates)

@@ -55,8 +55,8 @@ class InventoryService:
                     insufficient_items.append(menu_item_id)
 
             return {
-                "all available": len(insufficient_items) == 0,
-                "insufficient items": insufficient_items,
+                "all_available": len(insufficient_items) == 0,
+                "insufficient_items": insufficient_items,
                 "details": availability
             }
 

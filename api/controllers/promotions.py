@@ -2,76 +2,47 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Response, Depends
 from ..models import promotions as model
 from sqlalchemy.exc import SQLAlchemyError
+from .base_controller import BaseCRUDController, handle_db_errors
+
+
+class PromotionController(BaseCRUDController):
+    def __init__(self):
+        super().__init__(model.Promotion)
+
+    @handle_db_errors
+    def create(self, db: Session, request):
+        # Check for duplicate promotion code
+        existing_promo = db.query(model.Promotion).filter(
+            model.Promotion.code == request.code
+        ).first()
+        if existing_promo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Promotion code '{request.code}' already exists"
+            )
+
+        return super().create(db, request)
+
+
+# Create controller instance
+promotion_controller = PromotionController()
 
 
 def create(db: Session, request):
-    # Check for duplicate promotion code
-    existing_promo = db.query(model.Promotion).filter(model.Promotion.code == request.code).first()
-    if existing_promo:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Promotion code '{request.code}' already exists"
-        )
+    return promotion_controller.create(db, request)
 
-    new_item = model.Promotion(
-        code=request.code,
-        description=request.description,
-        discount_percent=request.discount_percent,
-        expiration_date=request.expiration_date
-    )
-
-    try:
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-
-    return new_item
 
 def read_all(db: Session):
-    try:
-        result = db.query(model.Promotion).all()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return result
+    return promotion_controller.read_all(db)
 
 
 def read_one(db: Session, item_id):
-    try:
-        item = db.query(model.Promotion).filter(model.Promotion.id == item_id).first()
-        if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item
+    return promotion_controller.read_one(db, item_id)
 
 
 def update(db: Session, item_id, request):
-    try:
-        item = db.query(model.Promotion).filter(model.Promotion.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        update_data = request.dict(exclude_unset=True)
-        item.update(update_data, synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return item.first()
+    return promotion_controller.update(db, item_id, request)
 
 
 def delete(db: Session, item_id):
-    try:
-        item = db.query(model.Promotion).filter(model.Promotion.id == item_id)
-        if not item.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Id not found!")
-        item.delete(synchronize_session=False)
-        db.commit()
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return promotion_controller.delete(db, item_id)
