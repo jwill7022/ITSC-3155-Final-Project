@@ -8,3 +8,4 @@ httpx
 cryptography
 pydantic~=2.11.7
 requests~=2.32.4
+redis
