@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import date
 from typing import Optional
@@ -17,12 +17,14 @@ router = APIRouter(
     prefix="/staff_actions",
 )
 
-#Existing ingredient checking
+
+# Existing ingredient checking
 @router.get("/")
 def view_ingredients(menu_item_id: int, quantity: int, db: Session = Depends(get_db)):
     return staff_services.get_required_ingredients(db, menu_item_id, quantity)
 
-#Inventory Management
+
+# Inventory Management
 @router.get("/inventory/low-stock")
 def get_low_stock_items(
         threshold: int = Query(10, description="Stock threshold"),
@@ -31,37 +33,56 @@ def get_low_stock_items(
     """Get items with low stock"""
     return InventoryService.get_low_stock_items(db, threshold)
 
+
 @router.post("/inventory/check-availability")
 def check_inventory_availability(
-        order_items: list[dict],    #[{"menu_item_id": 1, "quantity": 2}]
+        order_items: list[dict],  # [{"menu_item_id": 1, "quantity": 2}]
         db: Session = Depends(get_db)
 ):
     """Check if order items can be fulfilled"""
     return InventoryService.check_availability(db=db, order_items=order_items)
 
-#Order Management
+
+# Order Management - FIXED
 @router.get("/orders/date-range")
 def get_orders_by_date_range(
-        start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
-        end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+        start_date: date = Query(..., description="Start date (YYYY-MM-DD)", example="2024-01-01"),
+        end_date: date = Query(..., description="End date (YYYY-MM-DD)", example="2024-01-31"),
         db: Session = Depends(get_db)
 ):
-    """Get orders within date range"""
+    """Get orders within date range - FIXED with proper validation"""
+    # Validate date range
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Start date must be before or equal to end date"
+        )
+
+    # Check if date range is not too large (optional safety measure)
+    if (end_date - start_date).days > 365:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date range cannot exceed 365 days"
+        )
+
     return OrderService.get_orders_by_date_range(db, start_date, end_date)
 
-#Revenue Reporting
+
+# Revenue Reporting - FIXED
 @router.get("/revenue/daily")
 def get_daily_revenue(
-        target_date: date = Query(..., description="Date for revenue calculation"),
+        target_date: date = Query(..., description="Date for revenue calculation (YYYY-MM-DD)", example="2024-01-15"),
         db: Session = Depends(get_db)
 ):
-    """Calculate total revenue for a specific date"""
+    """Calculate total revenue for a specific date - FIXED"""
     return OrderService.calculate_daily_revenue(db, target_date)
+
 
 @router.get("/analytics/menu-performance")
 def get_menu_performance(db: Session = Depends(get_db)):
     """Get menu performance analytics"""
     return AnalyticsService.get_menu_item_performance(db)
+
 
 @router.get("/analytics/review-insights")
 def get_review_insights(
@@ -70,6 +91,7 @@ def get_review_insights(
 ):
     """Get review insights and sentiment analysis"""
     return AnalyticsService.get_review_insights(db, menu_item_id)
+
 
 # Promotion management
 @router.get("/promotions/code/{promo_code}", response_model=promotion_schema.Promotion)
