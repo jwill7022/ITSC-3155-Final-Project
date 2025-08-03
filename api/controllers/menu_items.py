@@ -67,17 +67,16 @@ def get_nutrition_info(db: Session, item_id: int):
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found!")
 
-        # Get ingredients
-        ingredients = db.query(MenuItemIngredient).join(Resource).filter(
-            MenuItemIngredient.menu_item_id == item_id
-        ).all()
+        ingredients = db.query(MenuItemIngredient, Resource).join(
+            Resource, MenuItemIngredient.resource_id == Resource.id
+        ).filter(MenuItemIngredient.menu_item_id == item_id).all()
 
         ingredient_list = [
             {
-                "name": ing.resource.item,
-                "amount": ing.amount
+                "name": resource.item,
+                "amount": ingredient.amount
             }
-            for ing in ingredients
+            for ingredient, resource in ingredients
         ]
 
         return {
