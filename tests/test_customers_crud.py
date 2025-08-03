@@ -83,7 +83,7 @@ def test_update_customer():
     customer_data = {
         "customer_name": "Jane Smith",
         "customer_email": "jane.smith@example.com", 
-        "customer_phone": 5550456
+        "customer_phone": "1235550456"
     }
     
     create_response = client.post("/customers/", json=customer_data)
@@ -103,7 +103,7 @@ def test_update_customer():
     updated_data = {
         "customer_name": "Jane Smith Updated",
         "customer_email": "jane.smith.updated@example.com",
-        "customer_phone": 5550789
+        "customer_phone": "5565550789"
     }
     
     response = client.put(f"/customers/{customer_id}", json=updated_data)
@@ -119,7 +119,7 @@ def test_delete_customer():
     customer_data = {
         "customer_name": "Delete Me",
         "customer_email": "delete.me@example.com",
-        "customer_phone": 5550999
+        "customer_phone": "9875550999"
     }
     
     create_response = client.post("/customers/", json=customer_data)
