@@ -96,7 +96,7 @@ def sample_menu_item(db_session, sample_resource):
         description="Delicious grilled chicken breast",
         price=Decimal("15.99"),
         calories=350,
-        food_category=FoodCategory.REGULAR,
+        food_category=FoodCategory.REGULAR,  # Use enum directly
         is_available=True
     )
     db_session.add(menu_item)

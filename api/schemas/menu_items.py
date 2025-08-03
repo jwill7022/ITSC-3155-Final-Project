@@ -34,6 +34,20 @@ class MenuItemsBase(BaseModel):
             raise ValueError('Price must be greater than 0')
         return round(v, 2)
 
+    @field_validator('food_category', mode='before')
+    def validate_food_category(cls, v):
+        """Convert string to enum if necessary"""
+        if isinstance(v, str):
+            # Handle case-insensitive conversion
+            v_lower = v.lower()
+            for category in FoodCategory:
+                if category.value == v_lower:
+                    return category
+            # If not found, raise error with valid options
+            valid_options = [cat.value for cat in FoodCategory]
+            raise ValueError(f'Invalid food category. Must be one of: {valid_options}')
+        return v
+
 
 class MenuItemsCreate(MenuItemsBase):
     pass
@@ -46,6 +60,20 @@ class MenuItemsUpdate(BaseModel):
     calories: Optional[int] = Field(None, ge=0, le=5000)
     food_category: Optional[FoodCategory] = None
     is_available: Optional[bool] = None
+
+    @field_validator('food_category', mode='before')
+    def validate_food_category(cls, v):
+        """Convert string to enum if necessary"""
+        if v is None:
+            return v
+        if isinstance(v, str):
+            v_lower = v.lower()
+            for category in FoodCategory:
+                if category.value == v_lower:
+                    return category
+            valid_options = [cat.value for cat in FoodCategory]
+            raise ValueError(f'Invalid food category. Must be one of: {valid_options}')
+        return v
 
 
 class MenuItemsResponse(MenuItemsBase):

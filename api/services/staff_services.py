@@ -12,9 +12,9 @@ from api.models import promotions as promotion_model
 def calculate_daily_revenue(db, date):
     revenue = db.query(func.sum(Order.total_amount)).filter(
         func.date(Order.order_date) == date,
-        Order.status == StatusType.COMPLETED
+        Order.status == StatusType.COMPLETED  # Only count completed orders
     ).scalar()
-    return float(revenue) or 0
+    return float(revenue) if revenue else 0.0
 
 # this function gets and returns the ingredients needed for a particular menu item
 def get_required_ingredients(db, menu_item_id, quantity):

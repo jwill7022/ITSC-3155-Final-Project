@@ -13,16 +13,27 @@ def create(db: Session, request):
     existing_item = db.query(model.MenuItem).filter(model.MenuItem.name == request.name).first()
     if existing_item:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,  # Changed to 409 for consistency
             detail=f"Menu item with name '{request.name}' already exists"
         )
+
+    # Handle food_category enum conversion if needed
+    food_category = request.food_category
+    if isinstance(food_category, str):
+        try:
+            food_category = model.FoodCategory(food_category.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid food category: {food_category}"
+            )
 
     new_item = model.MenuItem(
         name=request.name,
         description=request.description,
         price=request.price,
         calories=request.calories,
-        food_category=request.food_category,
+        food_category=food_category,
         is_available=getattr(request, 'is_available', True)
     )
 
@@ -31,12 +42,14 @@ def create(db: Session, request):
         db.commit()
         db.refresh(new_item)
     except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
+        db.rollback()
+        error = str(e.__dict__.get('orig', e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     return new_item
 
 
+# Rest of the functions remain the same...
 def read_all(db: Session, skip: int = 0, limit: int = 100, available_only: bool = True):
     try:
         query = db.query(model.MenuItem)
