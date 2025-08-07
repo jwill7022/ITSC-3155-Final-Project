@@ -13,6 +13,7 @@
 
 ### BEFORE RUNNING SERVER:
 * Ensure that database name matches name found in *api/dependencies/config.py*
+* The `db_password` in `config.py` must match your MySQL root password
 # If database already exists:
 * Drop the schema and reinitialize it
 
