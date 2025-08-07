@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
-from .menu_items import MenuItems
+from .menu_items import MenuItemsBase
 
 
 class OrderDetailBase(BaseModel):
@@ -21,7 +21,7 @@ class OrderDetail(OrderDetailBase):
     id: int
     order_id: int
     menu_item_id: int
-    menu_items: MenuItems = None
+    menu_item: MenuItemsBase = None
 
     class ConfigDict:
         from_attributes = True

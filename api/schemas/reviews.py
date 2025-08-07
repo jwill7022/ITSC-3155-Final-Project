@@ -1,16 +1,22 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
 class ReviewsBase(BaseModel):
-    customer_id: int
-    rating: int
+    menu_item_id: int
+    customer_name: str
+    rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     review_text: Optional[str] = None
 
 
 class ReviewsCreate(ReviewsBase):
     pass
+
+
+class ReviewsUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Rating from 1 to 5")
+    review_text: Optional[str] = None
 
 
 class Reviews(ReviewsBase):
