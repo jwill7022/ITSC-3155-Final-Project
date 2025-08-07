@@ -676,15 +676,3 @@ EXPOSE 8000
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
-
-### Production Considerations
-
-1. **Database Connection Pooling**: Configure SQLAlchemy connection pool
-2. **Logging**: Implement structured logging with appropriate levels
-3. **Monitoring**: Set up health checks and performance monitoring
-4. **Security**: Implement rate limiting and input sanitization
-5. **Backup**: Regular database backups and disaster recovery procedures
-
-### Performance Optimization
-
-1. **Database
